@@ -1,5 +1,4 @@
 <?php
-
 function resolveRelativeUrl($baseUrl, $relativeUrl) {
     $parsedBase = parse_url($baseUrl);
     $scheme = $parsedBase['scheme'] . '://' . $parsedBase['host'];
@@ -13,7 +12,6 @@ function resolveRelativeUrl($baseUrl, $relativeUrl) {
         return $scheme . $path . '/' . $relativeUrl;
     }
 }
-
 function fetchUrl($targetUrl) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $targetUrl);
@@ -26,11 +24,8 @@ function fetchUrl($targetUrl) {
     $response = curl_exec($ch);
     $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     curl_close($ch);
-
     $headers = substr($response, 0, $headerSize);
     $content = substr($response, $headerSize);
-
-    // تعیین نوع محتوا
     if (strpos($headers, 'text/html') !== false) {
         header('Content-Type: text/html; charset=utf-8');
     } elseif (strpos($headers, 'application/javascript') !== false) {
@@ -40,18 +35,13 @@ function fetchUrl($targetUrl) {
     } elseif (strpos($headers, 'image/') !== false) {
         header('Content-Type: ' . curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
     }
-
     return $content;
 }
-
 function rewriteUrls($html, $proxyScript, $baseUrl) {
     $dom = new DOMDocument();
-    @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html); // @ برای خاموش کردن warning
+    @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
     $xpath = new DOMXPath($dom);
-
-    // تمام تگ‌هایی که دارای منبع هستن رو برمی‌داریم
     $nodes = $xpath->query('//a[@href] | //img[@src] | //script[@src] | //link[@href] | //form[@action] | //iframe[@src]');
-
     foreach ($nodes as $node) {
         $attr = match(true) {
             $node->hasAttribute('href') => 'href',
@@ -59,43 +49,31 @@ function rewriteUrls($html, $proxyScript, $baseUrl) {
             $node->hasAttribute('action') => 'action',
             default => null,
         };
-
         if (!$attr) continue;
-
         $original = $node->getAttribute($attr);
         if (str_contains($original, 'data:') || str_contains($original, '#')) continue;
-
         $fullUrl = resolveRelativeUrl($baseUrl, $original);
         $proxiedUrl = $proxyScript . '?url=' . urlencode($fullUrl);
         $node->setAttribute($attr, $proxiedUrl);
     }
-
     return $dom->saveHTML();
 }
-
-// --- شروع صفحه ---
 $proxyScript = basename($_SERVER['PHP_SELF']);
 $url = $_GET['url'] ?? '';
-
 if (!empty($url)) {
     if (!preg_match('#^https?://#', $url)) {
         $url = 'http://' . $url;
     }
-
     $html = fetchUrl($url);
     $rewrittenHtml = rewriteUrls($html, $proxyScript, $url);
-
     header("Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; img-src * data:; style-src * 'unsafe-inline';");
     echo $rewrittenHtml;
-    exit;
-}
-?>
-
+    exit; } ?>
 <!DOCTYPE html>
 <html lang="fa">
 <head>
     <meta charset="UTF-8">
-    <title>ولگرد - پروکسی php</title>
+    <title>ولگرد</title>
     <style>
         body {
             direction: rtl;
@@ -138,9 +116,9 @@ if (!empty($url)) {
 </head>
 <body>
     <div class="container">
-        <h2>🌐 ولگرد - پروکسی PHP</h2>
+        <h2>ولگرد</h2>
         <form method="get">
-            <label>آدرس سایتی که می‌خواهی وارد آن شوی:</label>
+            <label>آدرس سایتی که میخوای واردش بشی:</label>
             <input type="text" name="url" placeholder="مثلاً https://example.com " required>
             <button type="submit">رفتن</button>
         </form>
